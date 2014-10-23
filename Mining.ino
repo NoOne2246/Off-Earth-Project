@@ -20,6 +20,8 @@
   
   History:
   
+  v1.6  23/10/14Removed Locate function, added error correction to detect function
+                also added the new rotation system
   v1.5	13/9/14 Changed the movement to another function of its own
                 fixed up Ping control with the ultrasound library
   v1.4  10/9/14 added manual control to the code.
@@ -49,13 +51,17 @@ of pings as well as time in microseconds*/
 #define PAUSE 50                   //pause for motor to make sure it stops movement
 
 //Ball location
-#define DISPLACEMENT 500.0         //displacement of sensor and ball
+#define DISPLACEMENT 10.0          //displacement of sensor and ball (mm)
 #define SPEED 150.0                //define speed of vehicle as mm/ms
 
 //Power Level definition
 #define VFS 700                    //voltage minimum recieve to stop forward
 #define VBS 400                    //voltage minimum recieve to stop backward movement
                                    //this voltage will also stop clamping
+                                   
+//rotation
+#define ROTATION 100               // mill seconds to turn one degree
+
 //Constant
 #define SOS 0.34029                //Speed of Sound in mm/us
 
@@ -101,6 +107,7 @@ const int FBStp = 0;           //forward backward check
 
 //manual overide
 const int Override = 0;
+const int On = 2;
 
 
 //-----------------------------------------------------------------------------------------------------
@@ -125,7 +132,9 @@ void turnOff();
 void locate();
 void forward();
 void moveCtrl(int dir);
+void rotate(int angle);
 float Ping(int echo);
+float PingC();
 
 
 
@@ -150,6 +159,7 @@ void setup(){
   pinMode(LTrig, OUTPUT);
   pinMode(CTrig, OUTPUT);
   pinMode(RTrig, OUTPUT);
+  pinMode(On, INPUT);
   
   //set up input pins
   pinMode(LRec, INPUT);
@@ -163,27 +173,30 @@ void setup(){
   */
   
   Serial.println("Initialisation Complete");
-  Serial.println("Input any key to begin");
+  Serial.println("Hit button to begin");
   
   //Wait for start signal
-  while(Serial.available()==0){                    //wait until it receives start signal
+  while(digitalRead(On)==0){                    //wait until it receives start signal
   }
+  attachInterrupt(Override, turnOff, CHANGE);   //switch off vehicle
   
   //interrupts();                                  //enable the interrupt
   
-  locate();                                        //make sure facing the ball
+  //locate();                                        //make sure facing the ball
   
   forward();                                       //move to the ball.
   
-  clampCtrl(true, 0);                              //clamp the ball, close clamps
+  //clampCtrl(true, 0);                              //clamp the ball, close clamps
+  rotate(90);
 }
 
 //loop function
 void loop (){                                      //loop has been simplified as it may change to manual control
   drillCtrl();                                     //Run the ball drilling function.
   //clampCtrl(false, 5);                           loosen calmp a bit (maybe).
-  rotateCtrl();                                    //Run ball rotating process.
+  //rotateCtrl();                                    //Run ball rotating process.
   //clampCtrl(true, 0);                            retighten the clamp.
+  rotate(5);
 }
 
 
@@ -221,6 +234,65 @@ float Ping(int echo){
   return distance;                          //return distance in mm
 }
 */
+
+void rotate(int angle){
+  digitalWrite(rota, HIGH);
+  int time;
+  time = angle*ROTATION;
+  delay(time);
+  digitalWrite(rota, LOW);
+}
+
+
+float PingC(){
+  float distance = 0;                       //declare internal variables
+  float average = 0;
+  int temp, store;
+  float timer[10][2];
+  
+  for(int i = 0; i < 10; i++){
+    timer[i][1] = cenPing.ping_median() * SOS;    //find distance using centre sensor
+    timer[i][2] = 1;                              //set up all counters to 1
+  }
+  
+  for(int i = 0; i<10; i++){                      //bubble sort numbers from smallest to highest
+    for (int j = 0; j<9-i; j++){
+      if(timer[j][1]>timer[j+1][1]){
+        temp = timer[j][1];
+        timer[j][1] = timer[j+1][1];
+        timer[j+1][1] = temp;
+      }
+    }
+  }
+  
+  for(int i = 0; i < 9; i++){                      //count the amount of similar ones
+    j = 1;
+    while(timer[i][2]+5.0 > timer[i+1][2] && j + i < 10){    //make sure not to overflow data.
+      timer[i][2]++;
+      j++;
+    }
+  }
+  
+  temp = 0;
+  
+  for(int i = 0; i<10; i++){
+    if(timer[i][2] >= temp){
+      temp = timer[i][2];
+      store = i;
+    }
+  }
+  
+  for(int i = 0; i<store+1; i++){
+    average += timer[temp+i][1];
+  }
+  
+  distance = average / store;
+  
+  return distance;                          //return distance in mm
+}
+  
+
+
 
 void moveCtrl(int dir){
   switch(dir){
@@ -263,7 +335,7 @@ void forward(){
   need to know location of sensor and distance from the edge the ball will be loacted.
   */
   
-  distance = cenPing.ping_median() * SOS;    //find distance using centre sensor
+  distance = PingC();
   timer = (distance - DISPLACEMENT) / SPEED; //calculate time it needs to run at
   
   moveCtrl(FORWARD);               	     //move forward
@@ -271,6 +343,7 @@ void forward(){
   moveCtrl(STOP);                            //Stop vehicle
 }
 
+/*
 void locate(){
   
   //declare local variables
@@ -297,13 +370,12 @@ void locate(){
   
   moveCtrl(STOP);                             							//Stop all movement
 }
+*/
 
-
-void clampCtrl(boolean dir, int timer){
+/*void clampCtrl(boolean dir, int timer){
   
   if (dir == true){                        //decide whether to open or close (1 to close, 0 to open).
     digitalWrite (clcPin, HIGH);           //Start closing clamps
-    /*method to detect closed*/
     digitalWrite (clcPin, LOW);            //Stop closing clamps
   } else {
     digitalWrite (cloPin, HIGH);           //Start opening clamps
@@ -319,6 +391,8 @@ void clampCtrl(boolean dir, int timer){
     digitalWrite (cloPin, LOW);            //Stop opening clamps 
   }
 }
+*/
+
 
 void drillCtrl(){
   
@@ -344,12 +418,14 @@ void drillCtrl(){
   digitalWrite (driPin, LOW);               //Turn off drill
 }
 
+/*
 void rotateCtrl(){
   
   digitalWrite (rota, HIGH);                //Turn the motor to turn the ball on
   delay (ROTA_TIME);                        //rotate the ball for how many milliseconds.
   digitalWrite (rota, LOW);                 //Stop turning the ball
 }
+*/
 
 /* Remove manual control section as that is causing problems due to Serial usage within the interrupt
 //Manual Control of the device
@@ -529,4 +605,3 @@ void turnOff(){
   while(0!=1){                              //loops infinitely to stop the machine
   }
 }
-
