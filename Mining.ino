@@ -119,9 +119,9 @@ int movTime;                  //time to move.
 int state;                    //state of the device
 
 //Pings
-NewPing leftPing(LTrig, LRec, 125);
-NewPing cenPing(CTrig, CRec, 125);
-NewPing rightPing(RTrig, RRec, 125);
+NewPing leftPing(LTrig, LRec, 150);
+NewPing cenPing(CTrig, CRec, 150);
+NewPing rightPing(RTrig, RRec, 150);
 
 //Functions                   Pretty much self explanatory, their use is written in the Functions Section
 void clampCtrl(boolean dir, int timer);
@@ -236,11 +236,11 @@ float Ping(int echo){
 */
 
 void rotate(int angle){
-  digitalWrite(rota, HIGH);
-  int time;
-  time = angle*ROTATION;
-  delay(time);
-  digitalWrite(rota, LOW);
+  int time;				   //create time variable
+  time = angle*ROTATION;                   //calculate the time to rotate for in ms
+  digitalWrite(rota, HIGH);		   //rotate the ball
+  delay(time);				   //delay for calculated time
+  digitalWrite(rota, LOW);                 //stop rotating ball
 }
 
 
@@ -251,7 +251,10 @@ float PingC(){
   float timer[10][2];
   
   for(int i = 0; i < 10; i++){
-    timer[i][1] = cenPing.ping_median() * SOS;    //find distance using centre sensor
+    do
+    {
+      timer[i][1] = cenPing.ping_median() * SOS;    //find distance using centre sensor
+    }while(timer[i][1] < 750.0);		   //loop makes sure values are reasonable
     timer[i][2] = 1;                              //set up all counters to 1
   }
   
@@ -265,9 +268,9 @@ float PingC(){
     }
   }
   
-  for(int i = 0; i < 9; i++){                      //count the amount of similar ones
+  for(int i = 0; i < 9; i++){                      //count the amount of similar ones within 5mm
     j = 1;
-    while(timer[i][2]+5.0 > timer[i+1][2] && j + i < 10){    //make sure not to overflow data.
+    while(timer[i][2]+5.0 > timer[i+j][2] && j + i < 10){    //make sure not to overflow data.
       timer[i][2]++;
       j++;
     }
@@ -275,18 +278,18 @@ float PingC(){
   
   temp = 0;
   
-  for(int i = 0; i<10; i++){
-    if(timer[i][2] >= temp){
-      temp = timer[i][2];
-      store = i;
+  for(int i = 0; i<10; i++){	    	    //loop to find max count
+    if(timer[i][2] >= temp){		    //take the value with the most with the largest similar values
+      temp = timer[i][2];		    //take the count of the most and store it
+      store = i;			    //store that value at which it starts
     }
   }
   
-  for(int i = 0; i<store+1; i++){
-    average += timer[temp+i][1];
+  for(int i = 0; i<temp+1; i++){	    //add all those values starting from the first value to the highest within range
+    average += timer[store+i][1];
   }
   
-  distance = average / store;
+  distance = average / store;		    //take the average of these similar values
   
   return distance;                          //return distance in mm
 }
