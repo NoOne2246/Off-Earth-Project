@@ -644,13 +644,12 @@ void manualCtrl(){
 
 //reset the machine and stop movement
 void turnOff(){
-  
   aval = analogRead(FBStp);                 //read the value of the voltage
   
-  if(aval > VFS || aval < VBS){             //check if drill is all the way out, if not, pull out
+  if(aval > VFS || aval < VBS){             //check if drill is all the way in, if not, pull back
   
-    digitalWrite(driPin, HIGH);             //drill on
-    delay(100);                             //give drill time to pick up speed
+    //digitalWrite(driPin, HIGH);             //drill on
+    //delay(100);                             give drill time to pick up speed
     digitalWrite(dBakPin, HIGH);            //move drill backwards
     aval = analogRead(FBStp);               //read the value of the voltage
     
@@ -660,11 +659,10 @@ void turnOff(){
     }
     
     digitalWrite(dBakPin, LOW);             //stop backward movement
-    digitalWrite(driPin, LOW);              //Turn off drill
+    //digitalWrite(driPin, LOW);              Turn off drill
   }
   
-  clampCtrl(false, 0);                      //open clamps
-  
+  //clampCtrl(false, 0);                      //open clamps
   while(0!=1){                              //loops infinitely to stop the machine
   }
 }
