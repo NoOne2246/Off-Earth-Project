@@ -20,6 +20,7 @@
   
   History:
   
+  v1.8  25/10/14Changed movement to the ball
   v1.7	25/10/14Added feedback messaging
   v1.6  23/10/14Removed Locate function, added error correction to detect function
                 also added the new rotation system
@@ -105,6 +106,7 @@ const int motEnable = 12;      //enable both motors.
 
 //Analogue Pins
 const int FBStp = 0;           //forward backward check
+const int closTrig = A2;       //trigger for movement
 
 //manual overide
 const int Override = 0;
@@ -132,6 +134,7 @@ void manualCtrl();
 void turnOff();
 void locate();
 void forward();
+void catch();
 void moveCtrl(int dir);
 void rotate(int angle);
 float Ping(int echo);
@@ -167,12 +170,13 @@ void setup(){
   pinMode(LTrig, OUTPUT);
   pinMode(CTrig, OUTPUT);
   pinMode(RTrig, OUTPUT);
-  pinMode(On, INPUT);
+  pinMode(closTrig, OUTPUT);
   
   //set up input pins
   pinMode(LRec, INPUT);
   pinMode(CRec, INPUT);
   pinMode(RRec, INPUT);
+  pinMode(On, INPUT);
   
   /*
   attachInterrupt(Override, manualCtrl, CHANGE);   //switch to manual control the vehicle
@@ -193,7 +197,9 @@ void setup(){
   
   //locate();                                        //make sure facing the ball
   
-  forward();                                       //move to the ball.
+  //forward();                                       //move to the ball.
+  
+  catch();					     //move to the ball
   
   //clampCtrl(true, 0);                              //clamp the ball, close clamps
   rotate(90);
@@ -214,7 +220,7 @@ void loop (){                                      //loop has been simplified as
 // subroutines
 //-----------------------------------------------------------------------------------------------------
 
-/*old ping code, rendered redundant after the decidion to use the ultrasound ping library.
+//old ping code, rendered redundant after the decidion to use the ultrasound ping library.
 float Ping(int echo){
   
   float distance = 0;                       //declare internal variables
@@ -242,7 +248,14 @@ float Ping(int echo){
   
   return distance;                          //return distance in mm
 }
-*/
+
+void catch(){
+  moveCtrl(FORWARD);               	     //move forward
+  while(closTrig==LOW){
+  }
+  moveCtrl(STOP);                            //Stop vehicle
+}
+
 
 void rotate(int angle){
   int time;				   //create time variable
