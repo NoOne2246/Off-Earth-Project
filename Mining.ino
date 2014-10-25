@@ -20,6 +20,7 @@
   
   History:
   
+  v1.7	25/10/14Added feedback messaging
   v1.6  23/10/14Removed Locate function, added error correction to detect function
                 also added the new rotation system
   v1.5	13/9/14 Changed the movement to another function of its own
@@ -146,6 +147,13 @@ void setup(){
 
   Serial.begin(9600);                              //initialise serial communications
   
+  delay(1000);
+  Serial.println("AT+NAMEBlackhole");
+  delay(1000);
+  Serial.print("AT+PIN1123");
+  delay(1000);
+  
+  
   //Set up output pins
   pinMode(driPin, OUTPUT);
   pinMode(dForPin, OUTPUT);
@@ -178,6 +186,7 @@ void setup(){
   //Wait for start signal
   while(digitalRead(On)==0){                    //wait until it receives start signal
   }
+  
   attachInterrupt(Override, turnOff, CHANGE);   //switch off vehicle
   
   //interrupts();                                  //enable the interrupt
@@ -237,10 +246,23 @@ float Ping(int echo){
 
 void rotate(int angle){
   int time;				   //create time variable
+  
+  Serial.print("Angle to rotate:");
+  Serial.println(angle);
+  
   time = angle*ROTATION;                   //calculate the time to rotate for in ms
+  Serial.print("Time to rotate:");
+  Serial.println(time);
+  
+  Serial.println("Rotating ball");
+  
   digitalWrite(rota, HIGH);		   //rotate the ball
+  
+  
   delay(time);				   //delay for calculated time
   digitalWrite(rota, LOW);                 //stop rotating ball
+  Serial.println("Stop rotating ball");
+  
 }
 
 
@@ -250,14 +272,21 @@ float PingC(){
   int temp, store;
   float timer[10][2];
   
+  Serial.println("PingC setup complete");
+  
   for(int i = 0; i < 10; i++){
     do
     {
       timer[i][1] = cenPing.ping_median() * SOS;    //find distance using centre sensor
     }while(timer[i][1] < 750.0);		   //loop makes sure values are reasonable
+    Serial.print("Distance ");
+    Serial.print(i+1);
+    Serial.print(": ");
+    Serial.println(timer[i][1]);
     timer[i][2] = 1;                              //set up all counters to 1
   }
   
+  Serial.println("Start data sort");
   for(int i = 0; i<10; i++){                      //bubble sort numbers from smallest to highest
     for (int j = 0; j<9-i; j++){
       if(timer[j][1]>timer[j+1][1]){
@@ -267,6 +296,8 @@ float PingC(){
       }
     }
   }
+  Serial.println("Data sort complete");
+  Serial.println("Crunching data");
   
   for(int i = 0; i < 9; i++){                      //count the amount of similar ones within 5mm
     j = 1;
@@ -276,7 +307,9 @@ float PingC(){
     }
   }
   
-  temp = 0;
+  Serial.println("Counted similar values within 5mm of each other");
+  
+    temp = 0;
   
   for(int i = 0; i<10; i++){	    	    //loop to find max count
     if(timer[i][2] >= temp){		    //take the value with the most with the largest similar values
@@ -285,11 +318,22 @@ float PingC(){
     }
   }
   
+  Serial.print("Min Value:");
+  Serial.println(timer[store][1]);
+  Serial.print("Amount of similar values:");
+  Serial.println(temp);
+  
   for(int i = 0; i<temp+1; i++){	    //add all those values starting from the first value to the highest within range
     average += timer[store+i][1];
   }
   
+  Serial.print("numbers total:");
+  Serial.println(average);
+  
   distance = average / store;		    //take the average of these similar values
+  
+  Serial.print("Distance to move:");
+  Serial.println(distance);
   
   return distance;                          //return distance in mm
 }
@@ -303,24 +347,28 @@ void moveCtrl(int dir){
 	
       digitalWrite(motPin1, HIGH);              //Both motors on
       digitalWrite(motPin2, HIGH);
+      Serial.println("Moving Forward");
       break;
   		
     case LEFT:
   		
       digitalWrite(motPin1, LOW);               //Right motor on
       digitalWrite(motPin2, HIGH);
+      Serial.println("Turning Left");
       break;
   		
     case RIGHT:
     
       digitalWrite(motPin1, HIGH);              //left motor on
       digitalWrite(motPin2, LOW);
+      Serial.println("Turning Right");
       break;
   		
     case STOP:
     
       digitalWrite(motPin1, LOW);               //stop both motors
       digitalWrite(motPin2, LOW);
+      Serial.println("Stopping");
       break;
 	  
     default:
@@ -338,8 +386,13 @@ void forward(){
   need to know location of sensor and distance from the edge the ball will be loacted.
   */
   
+  Serial.println("Finding Distance");
   distance = PingC();
+  
   timer = (distance - DISPLACEMENT) / SPEED; //calculate time it needs to run at
+  
+  Serial.print("Time to move:");
+  Serial.println(timer);
   
   moveCtrl(FORWARD);               	     //move forward
   delay(timer);                              //delay to stop using precalculated time
@@ -399,8 +452,11 @@ void locate(){
 
 void drillCtrl(){
   
-  digitalWrite(driPin, HIGH);               //drill on
-  delay(DRILL_DELAY);                       //give drill time to pick up speed
+  //digitalWrite(driPin, HIGH);               //drill on
+  //delay(DRILL_DELAY);                       //give drill time to pick up speed
+  
+  Serial.println("Drill Moving Forward");
+  
   digitalWrite(dForPin, HIGH);              //drill forward
   
   while (analogRead (FBStp) <= VFS){        //wait until the stop switch has been hit
@@ -408,7 +464,10 @@ void drillCtrl(){
   }
   
   digitalWrite (dForPin, LOW);              //stop forward movement of the drill
+  Serial.println("Drill stop Forward");
+  
   delay(PAUSE);                             //pause for moment
+  Serial.println("Drill Moving Backward");
   digitalWrite (dBakPin, HIGH);             //move drill backwards
   aval = analogRead(FBStp);                 //read the value of the voltage
   
@@ -418,7 +477,8 @@ void drillCtrl(){
   }
   
   digitalWrite (dBakPin, LOW);              //stop backward movement
-  digitalWrite (driPin, LOW);               //Turn off drill
+  Serial.println("Drill Stop Forward");
+  //digitalWrite (driPin, LOW);               //Turn off drill
 }
 
 /*
