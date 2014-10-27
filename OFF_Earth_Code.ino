@@ -123,6 +123,8 @@ const int closTrig = A2;       //trigger for movement
 //drill pin
 const int dForPin = 5;             //turn drill forward
 const int dBakPin = 6;             //turn drill reverse
+const int dUpPin = 9;              //move drill forward
+const int dDowPin = A0;            //move drill back pin
 
 //clamp pin
 const int rota = 3;                //rotate ball motor
@@ -132,7 +134,7 @@ const int motPin1 = 10;            //Left motor pin
 const int motPin2 = 11;            //Right Motor Pin
 
 //Servo Pins
-const int serPin = 9;              //Servo pin
+//const int serPin = 9;              //Servo pin
 
 //on/off overide
 const int Override = 0;            //Shutdown interrupt
@@ -175,7 +177,7 @@ float PingC();
 */
 
 //Variables
-int serVal = 10;              //value of the angle on the servo to begin with
+//int serVal = 10;              //value of the angle on the servo to begin with
 
 //Functions                   Pretty much self explanatory, their use is written in the Functions Section
 void drillCtrl();
@@ -230,6 +232,8 @@ void setup(){
   pinMode(rota, OUTPUT);
   pinMode(motPin1, OUTPUT);
   pinMode(motPin2, OUTPUT);
+  pinMode(dUpPin, OUTPUT);
+  pinMode(dDowPin, OUTPUT);
   
   //set up input pins
   pinMode(trigOn, INPUT);
@@ -237,10 +241,11 @@ void setup(){
   pinMode(trigBak, INPUT);
   pinMode(trigClos, INPUT);
   
+  /*
   //set up servo
   drillMove.attach(serPin);
   drillMove.write(serVal);
-  
+  */
   /*
   attachInterrupt(Override, manualCtrl, CHANGE);   //switch to manual control the vehicle
   
@@ -764,14 +769,18 @@ void drillCtrl(){
   digitalWrite(dForPin, HIGH);              //drill turn forward
   Serial.println("Drill Turning Forward");
   delay(PAUSE);                             //give drill time to pick up speed
+  digitalWrite (dUpPin, HIGH);              //drill forward
   
   Serial.println("Drill Moving Forward");
   
   while (digitalRead(trigFor)==LOW){        //check if stop switch has been hit
+    /*
     serVal++;                               //increase servo angle
     drillMove.write(serVal);                //write new angle
     delay(TURNSPEED);                       //delay turnspeed
+    */
   }
+  digitalWrite (dUpPin, LOW);               //drill stop forward
   
   Serial.println("Drill stop Forward");
   digitalWrite (dForPin, LOW);              //stop forward turning of the drill
@@ -782,13 +791,18 @@ void drillCtrl(){
   
   Serial.println("Drill Turning Backward");
   digitalWrite (dBakPin, HIGH);             //reverse drill
+  delay(PAUSE);
+  digitalWrite (dDowPin, HIGH);             //drill back
   Serial.println("Drill Moving Backward");
   
   while (digitalRead(trigBak)==LOW){        //check if stop switch has been hit
+    /*
     serVal--;                               //increase servo angle
     drillMove.write(serVal);                //write new angle
     delay(TURNSPEED);                       //delay turnspeed
+    */
   }
+  digitalWrite (dDowPin, LOW);              //drill stop back
   
   digitalWrite (dBakPin, LOW);              //stop drill
   Serial.println("Drill Stop Backward");
@@ -798,14 +812,18 @@ void drillCtrl(){
 void turnOff(){
   if(trigBak==LOW){
     digitalWrite (dBakPin, HIGH);             //move drill backwards
-    delay(PAUSE);                               //give drill time to pick up speed    
+    delay(PAUSE);                             //give drill time to pick up speed 
+    digitalWrite (dDowPin, HIGH);             //drill stop back   
     
     while (digitalRead(trigBak)==LOW){        //check if stop switch has been hit
+      /*
       serVal--;                               //increase servo angle
       drillMove.write(serVal);                //write new angle
       delay(10);                              //delay 10ms
+      */
     }
-    
+    digitalWrite (dDowPin, LOW);              //drill stop back
     digitalWrite (dBakPin, LOW);              //stop backward movement
   }
 }
+
