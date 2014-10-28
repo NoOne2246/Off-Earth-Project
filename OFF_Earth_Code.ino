@@ -20,6 +20,7 @@
   
   History:
   
+  v2.1  27/10/14 Changed method of moving the drill to actuator.
   v2.0  25/10/14 Major Revision of code
   v1.8  25/10/14 Changed movement to the ball
   v1.7	25/10/14 Added feedback messaging
@@ -100,7 +101,7 @@ const int dBakPin = 7;         //move drill backward
 //clamp pin
 const int cloPin = 4;          //opens the clamp
 const int clcPin = 3;          //closes the clamp
-const int rota = 5;           //rotate ball motor
+const int rota1 = 5;           //rotate ball motor
 
 //Distance pin
 const int LRec = A2;           //Left US receiver
@@ -121,28 +122,25 @@ const int closTrig = A2;       //trigger for movement
 
 */
 //drill pin
-const int dForPin = 5;             //turn drill forward
-const int dBakPin = 6;             //turn drill reverse
-const int dUpPin = 9;              //move drill forward
-const int dDowPin = A0;            //move drill back pin
+const int dForPin = 3;             //turn drill forward
+const int dBakPin = 5;             //turn drill reverse
 
 //clamp pin
-const int rota = 3;                //rotate ball motor
+const int rota1 = 7;               //rotate ball clockwise
+const int rota2 = 8;               //rotate ball counter clockwise
 
 //Motor Pins
 const int motPin1 = 10;            //Left motor pin
 const int motPin2 = 11;            //Right Motor Pin
 
-//Servo Pins
-//const int serPin = 9;              //Servo pin
 
 //on/off overide
 const int Override = 0;            //Shutdown interrupt
 
 //Trigger Pins
 const int trigOn = 2;              //on signal pin
-const int trigFor = 7;             //on signal pin
-const int trigBak = 8;             //on signal pin
+const int trigFor = 4;             //on signal pin
+const int trigBak = 6;             //on signal pin
 const int trigClos = 12;           //on signal pin
 
 
@@ -185,9 +183,10 @@ void turnOff();
 void forward();
 void moveCtrl(int dir);
 void rotate(int angle);
+void manualCtrl(int locat);
 
 //Servo
-Servo drillMove;
+//Servo drillMove;
 
 //-----------------------------------------------------------------------------------------------------
 // main
@@ -253,10 +252,10 @@ void setup(){
   */
   
   Serial.println("Initialisation Complete");
-  Serial.println("Hit button to begin");
+  Serial.println("Hit button or any key to begin");
   
   //Wait for start signal
-  while(digitalRead(trigOn)==0){                         //wait until it receives start signal
+  while(digitalRead(trigOn)==0||!Serial.available()){                         //wait until it receives start signal
   }
   
   attachInterrupt(Override, turnOff, CHANGE);        //switch off vehicle through interrupt
@@ -700,6 +699,9 @@ void forward(){
   */
   
   while(trigClos==LOW){                      //wait until vehicle hits ball
+    if(Serial.available()){
+      manualCtrl(1);
+    }
   }
   
   moveCtrl(STOP);                            //Stop vehicle
@@ -718,13 +720,17 @@ void rotate(int angle){
   
   Serial.println("Rotating ball");
   
-  digitalWrite(rota, HIGH);		   //rotate the ball
+  digitalWrite(rota1, HIGH);		   //rotate the ball
     
   delay(time);				   //delay for calculated time
   
-  digitalWrite(rota, LOW);                 //stop rotating ball
+  digitalWrite(rota1, LOW);                 //stop rotating ball
+  
   Serial.println("Stop rotating ball");
   
+  if(Serial.available()){
+    manualCtrl(2);
+  } 
 }
 
 //movement
@@ -767,10 +773,11 @@ void moveCtrl(int dir){
 void drillCtrl(){
   
   digitalWrite(dForPin, HIGH);              //drill turn forward
+  /*
   Serial.println("Drill Turning Forward");
   delay(PAUSE);                             //give drill time to pick up speed
   digitalWrite (dUpPin, HIGH);              //drill forward
-  
+  */
   Serial.println("Drill Moving Forward");
   
   while (digitalRead(trigFor)==LOW){        //check if stop switch has been hit
@@ -779,20 +786,24 @@ void drillCtrl(){
     drillMove.write(serVal);                //write new angle
     delay(TURNSPEED);                       //delay turnspeed
     */
+    
+    if(Serial.available()){
+      manualCtrl(3);
+    }
   }
-  digitalWrite (dUpPin, LOW);               //drill stop forward
+  //digitalWrite (dUpPin, LOW);               //drill stop forward
   
   Serial.println("Drill stop Forward");
   digitalWrite (dForPin, LOW);              //stop forward turning of the drill
-  Serial.println("Drill stop turning");
+  //Serial.println("Drill stop turning");
   
   
   delay(PAUSE);                             //pause for moment
   
-  Serial.println("Drill Turning Backward");
+  //Serial.println("Drill Turning Backward");
   digitalWrite (dBakPin, HIGH);             //reverse drill
   delay(PAUSE);
-  digitalWrite (dDowPin, HIGH);             //drill back
+  //digitalWrite (dDowPin, HIGH);             //drill back
   Serial.println("Drill Moving Backward");
   
   while (digitalRead(trigBak)==LOW){        //check if stop switch has been hit
@@ -801,11 +812,18 @@ void drillCtrl(){
     drillMove.write(serVal);                //write new angle
     delay(TURNSPEED);                       //delay turnspeed
     */
+    if(Serial.available()){
+      manualCtrl(4);
+    }
   }
-  digitalWrite (dDowPin, LOW);              //drill stop back
+  //digitalWrite (dDowPin, LOW);              //drill stop back
   
   digitalWrite (dBakPin, LOW);              //stop drill
   Serial.println("Drill Stop Backward");
+}
+
+void manualCtrl(int locat){
+  
 }
 
 //reset the machine and stop movement
@@ -825,5 +843,9 @@ void turnOff(){
     digitalWrite (dDowPin, LOW);              //drill stop back
     digitalWrite (dBakPin, LOW);              //stop backward movement
   }
+  while(1!=0){
+    if(Serial.available()){
+      manualCtrl(2);
+    }
+  }
 }
-
