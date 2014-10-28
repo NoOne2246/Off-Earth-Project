@@ -20,32 +20,37 @@
   
   History:
   
-  v1.8  25/10/14Changed movement to the ball
-  v1.7	25/10/14Added feedback messaging
-  v1.6  23/10/14Removed Locate function, added error correction to detect function
-                also added the new rotation system
-  v1.5	13/9/14 Changed the movement to another function of its own
-                fixed up Ping control with the ultrasound library
-  v1.4  10/9/14 added manual control to the code.
-  v1.3  5/9/14  initial implementation
-		changed ClampControl to boolean
-  v1.2  3/9/14  changed the format of the layout to Arduino style
-  v1.1  28/8/14	outline the main parts
-  v1.0  21/8/14 Write out the basics of the code
+  v2.1  27/10/14 Changed method of moving the drill to actuator.
+  v2.0  25/10/14 Major Revision of code
+  v1.8  25/10/14 Changed movement to the ball
+  v1.7	25/10/14 Added feedback messaging
+  v1.6  23/10/14 Removed Locate function, added error correction to detect function
+                 also added the new rotation system
+  v1.5	13/9/14  Changed the movement to another function of its own
+                 fixed up Ping control with the ultrasound library
+  v1.4  10/9/14  added manual control to the code.
+  v1.3  5/9/14   initial implementation
+		 changed ClampControl to boolean
+  v1.2  3/9/14   changed the format of the layout to Arduino style
+  v1.1  28/8/14	 outline the main parts
+  v1.0  21/8/14  Write out the basics of the code
 */
 
 //-----------------------------------------------------------------------------------------------------
 //Include
 //-----------------------------------------------------------------------------------------------------
-#include <NewPing.h>
+//#include <NewPing.h>
 /*http://playground.arduino.cc/Code/NewPing
 This is a ping library written by Tim Eckel to use the
 HC-S04 ultrasound sensor. The library can return a median
 of pings as well as time in microseconds*/
 
+#include <Servo.h>
+/*servo library that comes with arduino software*/
 //-----------------------------------------------------------------------------------------------------
 //Define
 //-----------------------------------------------------------------------------------------------------
+/*
 //Time delay
 #define ROTA_TIME 700              //time to rotate ball
 #define READ_DELAY 100             //time between read of analogue pins
@@ -66,8 +71,14 @@ of pings as well as time in microseconds*/
 
 //Constant
 #define SOS 0.34029                //Speed of Sound in mm/us
+*/
 
-//temporary
+//timing
+#define ROTATION 100               // milli seconds to turn one degree
+#define PAUSE 50                   //pause for motor to make sure it stops movement
+#define TURNSPEED 10               //turn speed of servo
+
+//movement
 #define FORWARD 1
 #define LEFT 2
 #define RIGHT 3
@@ -81,6 +92,7 @@ of pings as well as time in microseconds*/
   used within the control of the vehicle as it is an interrupt pin to shutdown
   the machine after it has been initiated.
 */
+/*
 //drill pin
 const int driPin = 9;          //drill pin define
 const int dForPin = 8;         //move drill forward
@@ -89,7 +101,7 @@ const int dBakPin = 7;         //move drill backward
 //clamp pin
 const int cloPin = 4;          //opens the clamp
 const int clcPin = 3;          //closes the clamp
-const int rota = 5;           //rotate ball motor
+const int rota1 = 5;           //rotate ball motor
 
 //Distance pin
 const int LRec = A2;           //Left US receiver
@@ -108,14 +120,35 @@ const int motEnable = 12;      //enable both motors.
 const int FBStp = 0;           //forward backward check
 const int closTrig = A2;       //trigger for movement
 
-//manual overide
-const int Override = 0;
-const int On = 2;
+*/
+//drill pin
+const int dForPin = 3;             //turn drill forward
+const int dBakPin = 5;             //turn drill reverse
+
+//clamp pin
+const int rota1 = 7;               //rotate ball clockwise
+const int rota2 = 8;               //rotate ball counter clockwise
+
+//Motor Pins
+const int motPin1 = 10;            //Left motor pin
+const int motPin2 = 11;            //Right Motor Pin
+
+
+//on/off overide
+const int Override = 0;            //Shutdown interrupt
+
+//Trigger Pins
+const int trigOn = 2;              //on signal pin
+const int trigFor = 4;             //on signal pin
+const int trigBak = 6;             //on signal pin
+const int trigClos = 12;           //on signal pin
+
 
 
 //-----------------------------------------------------------------------------------------------------
 //Declaring
 //-----------------------------------------------------------------------------------------------------
+/*
 //Variables
 int aval;                     //read value of analogue pin
 int movTime;                  //time to move.
@@ -134,13 +167,26 @@ void manualCtrl();
 void turnOff();
 void locate();
 void forward();
-void catch();
+void forward();
 void moveCtrl(int dir);
 void rotate(int angle);
 float Ping(int echo);
 float PingC();
+*/
 
+//Variables
+//int serVal = 10;              //value of the angle on the servo to begin with
 
+//Functions                   Pretty much self explanatory, their use is written in the Functions Section
+void drillCtrl();
+void turnOff();
+void forward();
+void moveCtrl(int dir);
+void rotate(int angle);
+void manualCtrl(int locat);
+
+//Servo
+//Servo drillMove;
 
 //-----------------------------------------------------------------------------------------------------
 // main
@@ -156,7 +202,7 @@ void setup(){
   Serial.print("AT+PIN1123");
   delay(1000);
   
-  
+  /*
   //Set up output pins
   pinMode(driPin, OUTPUT);
   pinMode(dForPin, OUTPUT);
@@ -177,7 +223,27 @@ void setup(){
   pinMode(CRec, INPUT);
   pinMode(RRec, INPUT);
   pinMode(On, INPUT);
+  */
   
+  //Set up output pins
+  pinMode(dForPin, OUTPUT);
+  pinMode(dBakPin, OUTPUT);
+  pinMode(rota1, OUTPUT);
+  pinMode(rota2, OUTPUT);
+  pinMode(motPin1, OUTPUT);
+  pinMode(motPin2, OUTPUT);
+  
+  //set up input pins
+  pinMode(trigOn, INPUT);
+  pinMode(trigFor, INPUT);
+  pinMode(trigBak, INPUT);
+  pinMode(trigClos, INPUT);
+  
+  /*
+  //set up servo
+  drillMove.attach(serPin);
+  drillMove.write(serVal);
+  */
   /*
   attachInterrupt(Override, manualCtrl, CHANGE);   //switch to manual control the vehicle
   
@@ -185,21 +251,21 @@ void setup(){
   */
   
   Serial.println("Initialisation Complete");
-  Serial.println("Hit button to begin");
+  Serial.println("Hit button or any key to begin");
   
   //Wait for start signal
-  while(digitalRead(On)==0){                    //wait until it receives start signal
+  while(digitalRead(trigOn)==0||!Serial.available()){                         //wait until it receives start signal
   }
   
-  attachInterrupt(Override, turnOff, CHANGE);   //switch off vehicle
+  attachInterrupt(Override, turnOff, CHANGE);        //switch off vehicle through interrupt
   
-  //interrupts();                                  //enable the interrupt
+  //interrupts();                                    //enable the interrupt
   
   //locate();                                        //make sure facing the ball
   
   //forward();                                       //move to the ball.
   
-  catch();					     //move to the ball
+  forward();					     //move to the ball
   
   //clampCtrl(true, 0);                              //clamp the ball, close clamps
   rotate(90);
@@ -207,11 +273,14 @@ void setup(){
 
 //loop function
 void loop (){                                      //loop has been simplified as it may change to manual control
+
   drillCtrl();                                     //Run the ball drilling function.
+  
   //clampCtrl(false, 5);                           loosen calmp a bit (maybe).
   //rotateCtrl();                                    //Run ball rotating process.
   //clampCtrl(true, 0);                            retighten the clamp.
-  rotate(5);
+  
+  rotate(3);                                       //run rotate ball function
 }
 
 
@@ -220,7 +289,7 @@ void loop (){                                      //loop has been simplified as
 // subroutines
 //-----------------------------------------------------------------------------------------------------
 
-//old ping code, rendered redundant after the decidion to use the ultrasound ping library.
+/*old ping code, rendered redundant after the decidion to use the ultrasound ping library.
 float Ping(int echo){
   
   float distance = 0;                       //declare internal variables
@@ -248,37 +317,9 @@ float Ping(int echo){
   
   return distance;                          //return distance in mm
 }
+*/
 
-void catch(){
-  moveCtrl(FORWARD);               	     //move forward
-  while(closTrig==LOW){
-  }
-  moveCtrl(STOP);                            //Stop vehicle
-}
-
-
-void rotate(int angle){
-  int time;				   //create time variable
-  
-  Serial.print("Angle to rotate:");
-  Serial.println(angle);
-  
-  time = angle*ROTATION;                   //calculate the time to rotate for in ms
-  Serial.print("Time to rotate:");
-  Serial.println(time);
-  
-  Serial.println("Rotating ball");
-  
-  digitalWrite(rota, HIGH);		   //rotate the ball
-  
-  
-  delay(time);				   //delay for calculated time
-  digitalWrite(rota, LOW);                 //stop rotating ball
-  Serial.println("Stop rotating ball");
-  
-}
-
-
+/*
 float PingC(){
   float distance = 0;                       //declare internal variables
   float average = 0;
@@ -350,54 +391,18 @@ float PingC(){
   
   return distance;                          //return distance in mm
 }
-  
+*/
 
-
-
-void moveCtrl(int dir){
-  switch(dir){
-    case FORWARD:
-	
-      digitalWrite(motPin1, HIGH);              //Both motors on
-      digitalWrite(motPin2, HIGH);
-      Serial.println("Moving Forward");
-      break;
-  		
-    case LEFT:
-  		
-      digitalWrite(motPin1, LOW);               //Right motor on
-      digitalWrite(motPin2, HIGH);
-      Serial.println("Turning Left");
-      break;
-  		
-    case RIGHT:
-    
-      digitalWrite(motPin1, HIGH);              //left motor on
-      digitalWrite(motPin2, LOW);
-      Serial.println("Turning Right");
-      break;
-  		
-    case STOP:
-    
-      digitalWrite(motPin1, LOW);               //stop both motors
-      digitalWrite(motPin2, LOW);
-      Serial.println("Stopping");
-      break;
-	  
-    default:
-      break;
-  }
-}
-
+/*
 void forward(){
   
   //declare local variables
   int timer;                                  //timer that will check how long motors run for
   float distance;
   
-  /*motor only works with on and off so it must be able to run the motor so that it stops in time for the ball.
+  motor only works with on and off so it must be able to run the motor so that it stops in time for the ball.
   need to know location of sensor and distance from the edge the ball will be loacted.
-  */
+  
   
   Serial.println("Finding Distance");
   distance = PingC();
@@ -411,6 +416,7 @@ void forward(){
   delay(timer);                              //delay to stop using precalculated time
   moveCtrl(STOP);                            //Stop vehicle
 }
+*/
 
 /*
 void locate(){
@@ -462,7 +468,7 @@ void locate(){
 }
 */
 
-
+/*
 void drillCtrl(){
   
   //digitalWrite(driPin, HIGH);               //drill on
@@ -470,18 +476,18 @@ void drillCtrl(){
   
   Serial.println("Drill Moving Forward");
   
-  digitalWrite(dForPin, HIGH);              //drill forward
+  //digitalWrite(dForPin, HIGH);              //drill forward
   
   while (analogRead (FBStp) <= VFS){        //wait until the stop switch has been hit
     delay(READ_DELAY);                      //time between checking for whether the switch has been hit
   }
   
-  digitalWrite (dForPin, LOW);              //stop forward movement of the drill
+  //digitalWrite (dForPin, LOW);              //stop forward movement of the drill
   Serial.println("Drill stop Forward");
   
   delay(PAUSE);                             //pause for moment
   Serial.println("Drill Moving Backward");
-  digitalWrite (dBakPin, HIGH);             //move drill backwards
+  //digitalWrite (dBakPin, HIGH);             //move drill backwards
   aval = analogRead(FBStp);                 //read the value of the voltage
   
   while (aval > VFS || aval < VBS){         //check that the switch has been hit
@@ -489,10 +495,11 @@ void drillCtrl(){
     aval = analogRead(FBStp);               //read the value of the voltage
   }
   
-  digitalWrite (dBakPin, LOW);              //stop backward movement
+  //digitalWrite (dBakPin, LOW);              //stop backward movement
   Serial.println("Drill Stop Forward");
   //digitalWrite (driPin, LOW);               //Turn off drill
 }
+*/
 
 /*
 void rotateCtrl(){
@@ -655,6 +662,7 @@ void manualCtrl(){
 } 
 */
 
+/*
 //reset the machine and stop movement
 void turnOff(){
   aval = analogRead(FBStp);                 //read the value of the voltage
@@ -677,5 +685,166 @@ void turnOff(){
   
   //clampCtrl(false, 0);                      //open clamps
   while(0!=1){                              //loops infinitely to stop the machine
+  }
+}
+*/
+
+//move forward
+void forward(){
+  moveCtrl(FORWARD);               	     //move forward
+  /*
+  while(closTrig==LOW){
+  }
+  */
+  
+  while(trigClos==LOW){                      //wait until vehicle hits ball
+    if(Serial.available()){
+      manualCtrl(1);
+    }
+  }
+  
+  moveCtrl(STOP);                            //Stop vehicle
+}
+
+//rotate ball
+void rotate(int angle){
+  int time;				   //create time variable
+  
+  Serial.print("Angle to rotate:");
+  Serial.println(angle);
+  
+  time = angle*ROTATION;                   //calculate the time to rotate for in ms
+  Serial.print("Time to rotate:");
+  Serial.println(time);
+  
+  Serial.println("Rotating ball");
+  
+  digitalWrite(rota1, HIGH);		   //rotate the ball
+    
+  delay(time);				   //delay for calculated time
+  
+  digitalWrite(rota1, LOW);                 //stop rotating ball
+  
+  Serial.println("Stop rotating ball");
+  
+  if(Serial.available()){
+    manualCtrl(2);
+  } 
+}
+
+//movement
+void moveCtrl(int dir){
+  switch(dir){
+    case FORWARD:
+	
+      digitalWrite(motPin1, HIGH);              //Both motors on
+      digitalWrite(motPin2, HIGH);
+      Serial.println("Moving Forward");
+      break;
+  		
+    case LEFT:
+  		
+      digitalWrite(motPin1, LOW);               //Right motor on
+      digitalWrite(motPin2, HIGH);
+      Serial.println("Turning Left");
+      break;
+  		
+    case RIGHT:
+    
+      digitalWrite(motPin1, HIGH);              //left motor on
+      digitalWrite(motPin2, LOW);
+      Serial.println("Turning Right");
+      break;
+  		
+    case STOP:
+    
+      digitalWrite(motPin1, LOW);               //stop both motors
+      digitalWrite(motPin2, LOW);
+      Serial.println("Stopping");
+      break;
+	  
+    default:
+      break;
+  }
+}
+
+//drill movement
+void drillCtrl(){
+  
+  digitalWrite(dForPin, HIGH);              //drill turn forward
+  /*
+  Serial.println("Drill Turning Forward");
+  delay(PAUSE);                             //give drill time to pick up speed
+  digitalWrite (dUpPin, HIGH);              //drill forward
+  */
+  Serial.println("Drill Moving Forward");
+  
+  while (digitalRead(trigFor)==LOW){        //check if stop switch has been hit
+    /*
+    serVal++;                               //increase servo angle
+    drillMove.write(serVal);                //write new angle
+    delay(TURNSPEED);                       //delay turnspeed
+    */
+    
+    if(Serial.available()){
+      manualCtrl(3);
+    }
+  }
+  //digitalWrite (dUpPin, LOW);               //drill stop forward
+  
+  Serial.println("Drill stop Forward");
+  digitalWrite (dForPin, LOW);              //stop forward turning of the drill
+  //Serial.println("Drill stop turning");
+  
+  
+  delay(PAUSE);                             //pause for moment
+  
+  //Serial.println("Drill Turning Backward");
+  digitalWrite (dBakPin, HIGH);             //reverse drill
+  delay(PAUSE);
+  //digitalWrite (dDowPin, HIGH);             //drill back
+  Serial.println("Drill Moving Backward");
+  
+  while (digitalRead(trigBak)==LOW){        //check if stop switch has been hit
+    /*
+    serVal--;                               //increase servo angle
+    drillMove.write(serVal);                //write new angle
+    delay(TURNSPEED);                       //delay turnspeed
+    */
+    if(Serial.available()){
+      manualCtrl(4);
+    }
+  }
+  //digitalWrite (dDowPin, LOW);              //drill stop back
+  
+  digitalWrite (dBakPin, LOW);              //stop drill
+  Serial.println("Drill Stop Backward");
+}
+
+void manualCtrl(int locat){
+  
+}
+
+//reset the machine and stop movement
+void turnOff(){
+  if(trigBak==LOW){
+    digitalWrite (dBakPin, HIGH);             //move drill backwards
+    delay(PAUSE);                             //give drill time to pick up speed 
+    digitalWrite (dDowPin, HIGH);             //drill stop back   
+    
+    while (digitalRead(trigBak)==LOW){        //check if stop switch has been hit
+      /*
+      serVal--;                               //increase servo angle
+      drillMove.write(serVal);                //write new angle
+      delay(10);                              //delay 10ms
+      */
+    }
+    digitalWrite (dDowPin, LOW);              //drill stop back
+    digitalWrite (dBakPin, LOW);              //stop backward movement
+  }
+  while(1!=0){
+    if(Serial.available()){
+      manualCtrl(2);
+    }
   }
 }
