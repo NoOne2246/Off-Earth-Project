@@ -1,7 +1,7 @@
 /* 
   Description:
   this is bluetooth ctrl temporary version. this is used to ascertain the values
-  used to control the motors allowing the vehicle to move forward straightly.
+  used to control the motors allowing the vehicle to move forward straight
   
   Newest version of this code is always stored on Github in my account NoOne2246
   under Off-Earth-Project as the file Mining.ino
@@ -51,28 +51,25 @@ of pings as well as time in microseconds*/
   the machine after it has been initiated.
 */
 //drill pin
-const int dForPin = 5;             //turn drill forward
-const int dBakPin = 6;             //turn drill reverse
-const int dUpPin = 9;              //move drill forward
-const int dDowPin = A0;            //move drill back pin
+const int dForPin = 3;             //turn drill forward
+const int dBakPin = 5;             //turn drill reverse
 
 //clamp pin
-const int rota = 3;                //rotate ball motor
+const int rota1 = 7;               //rotate ball clockwise
+const int rota2 = 8;               //rotate ball counter clockwise
 
 //Motor Pins
 const int motPin1 = 10;            //Left motor pin
 const int motPin2 = 11;            //Right Motor Pin
 
-//Servo Pins
-//const int serPin = 9;              //Servo pin
 
 //on/off overide
 const int Override = 0;            //Shutdown interrupt
 
 //Trigger Pins
 const int trigOn = 2;              //on signal pin
-const int trigFor = 7;             //on signal pin
-const int trigBak = 8;             //on signal pin
+const int trigFor = 4;             //on signal pin
+const int trigBak = 6;             //on signal pin
 const int trigClos = 12;           //on signal pin
 
 
@@ -136,11 +133,10 @@ void setup(){
   //Set up output pins
   pinMode(dForPin, OUTPUT);
   pinMode(dBakPin, OUTPUT);
-  pinMode(rota, OUTPUT);
+  pinMode(rota1, OUTPUT);
+  pinMode(rota2, OUTPUT);
   pinMode(motPin1, OUTPUT);
   pinMode(motPin2, OUTPUT);
-  pinMode(dUpPin, OUTPUT);
-  pinMode(dDowPin, OUTPUT);
   
   //set up input pins
   pinMode(trigOn, INPUT);
