@@ -20,6 +20,7 @@
   
   History:
   
+  v2.2  29/10/14 Added new methods of going from the ball as well and changed pins.
   v2.1  27/10/14 Changed method of moving the drill to actuator.
   v2.0  25/10/14 Major Revision of code
   v1.8  25/10/14 Changed movement to the ball
@@ -73,6 +74,9 @@ of pings as well as time in microseconds*/
 #define SOS 0.34029                //Speed of Sound in mm/us
 */
 
+//sensor value
+#define LIGHT 80                   //value of ball in the sensor
+
 //timing
 #define ROTATION 100               // milli seconds to turn one degree
 #define PAUSE 50                   //pause for motor to make sure it stops movement
@@ -122,16 +126,16 @@ const int closTrig = A2;       //trigger for movement
 
 */
 //drill pin
-const int dForPin = 3;             //turn drill forward
-const int dBakPin = 5;             //turn drill reverse
+const int dForPin = 7;             //turn drill forward
+const int dBakPin = 8;             //turn drill reverse
 
 //clamp pin
-const int rota1 = 7;               //rotate ball clockwise
-const int rota2 = 8;               //rotate ball counter clockwise
+const int rota1 = 5;               //rotate ball clockwise
+const int rota2 = 6;               //rotate ball counter clockwise
 
 //Motor Pins
-const int motPin1 = 10;            //Left motor pin
-const int motPin2 = 11;            //Right Motor Pin
+const int motPin1 = 4;             //Left motor pin
+const int motPin2 = 3;             //Right Motor Pin
 
 
 //on/off overide
@@ -139,10 +143,12 @@ const int Override = 0;            //Shutdown interrupt
 
 //Trigger Pins
 const int trigOn = 2;              //on signal pin
-const int trigFor = 4;             //on signal pin
-const int trigBak = 6;             //on signal pin
-const int trigClos = 12;           //on signal pin
+const int trigFor = 9;             //on signal pin
+const int trigBak = 10;            //on signal pin
+const int trigClos = 11;           //on signal pin
 
+//light
+const int Ball = A0;               //ball light switch
 
 
 //-----------------------------------------------------------------------------------------------------
@@ -228,11 +234,10 @@ void setup(){
   //Set up output pins
   pinMode(dForPin, OUTPUT);
   pinMode(dBakPin, OUTPUT);
-  pinMode(rota, OUTPUT);
+  pinMode(rota1, OUTPUT);
+  pinMode(rota2, OUTPUT);
   pinMode(motPin1, OUTPUT);
   pinMode(motPin2, OUTPUT);
-  pinMode(dUpPin, OUTPUT);
-  pinMode(dDowPin, OUTPUT);
   
   //set up input pins
   pinMode(trigOn, INPUT);
@@ -257,6 +262,7 @@ void setup(){
   //Wait for start signal
   while(digitalRead(trigOn)==0||!Serial.available()){                         //wait until it receives start signal
   }
+  Serial.read();
   
   attachInterrupt(Override, turnOff, CHANGE);        //switch off vehicle through interrupt
   
@@ -698,11 +704,12 @@ void forward(){
   }
   */
   
-  while(trigClos==LOW){                      //wait until vehicle hits ball
+  while(trigClos==LOW && !Serial.available() && analogRead(Ball) > LIGHT){                      //wait until vehicle hits ball
     if(Serial.available()){
       manualCtrl(1);
     }
   }
+  Serial.read();
   
   moveCtrl(STOP);                            //Stop vehicle
 }
