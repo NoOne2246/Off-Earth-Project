@@ -829,7 +829,183 @@ void drillCtrl(){
   Serial.println("Drill Stop Backward");
 }
 
+
 void manualCtrl(int locat){
+  Serial.println("Manual Control Mode");
+  char input = Serial.read();
+  
+  for (int pin = 3; pin < 10; pin++){
+    digitalWrite(pin, LOW);
+  }
+  
+  while(input!='r'){                    //r is return/resume key
+    switch (input) {
+      case 'W': case 'w':  // Car Forward
+         Serial.print("---Car moving Forward---\n");
+         
+         if (input == lastCommand) {
+           moveCtrl(STOP);
+         } else {
+           moveCtrl(FORWARD);
+         }
+         printPorts();
+         break;
+      case 'A': case 'a':  // Car Left
+         Serial.println("---Car moving left---");
+         
+         if (input == lastCommand) {  
+           moveCtrl(STOP);  
+         } else {
+           moveCtrl(LEFT);
+         }
+         
+         printPorts();
+         break;
+      case 'D': case 'd':  // Car Right
+         Serial.println("---Car moving right---");
+         
+         if (input == lastCommand) {
+           moveCtrl(STOP);
+         } else {
+           moveCtrl(RIGHT);
+         }
+         
+         printPorts();
+         break;
+      case 'S': case 's':  // Car stop
+        
+         moveCtrl(STOP);
+         
+         printPorts();
+         break;
+      case 'Z': case 'z':  // Clamp rotateLeft
+         Serial.println("---Clamp rotateLeft---");
+         if (digitalRead(rota1) == LOW && 
+             digitalRead(rota2) == LOW) {
+           digitalWrite(rota1, HIGH);
+         } else {     
+           digitalWrite(rota1, LOW);
+           digitalWrite(rota2, LOW);
+         }
+         printPorts();
+         break;
+      case 'X':
+      case 'x':  // Clamp rotateRight
+         Serial.println("---Clamp rotateRight---");
+         if (digitalRead(rota1) == LOW && 
+             digitalRead(rota2) == LOW) {
+           digitalWrite(rota2, HIGH);
+         } else {     
+           digitalWrite(rota1, LOW);
+           digitalWrite(rota2, LOW);
+         }
+         printPorts();
+         break;
+      case 'I': case 'i':  // Drill Forward
+         Serial.println("---Drill going forward---");
+         if (digitalRead(dForPin) == LOW && 
+             digitalRead(dBakPin) == LOW) {
+           digitalWrite(dForPin, HIGH);
+         } else {     
+           digitalWrite(dForPin, LOW);
+           digitalWrite(dBakPin, LOW);
+         }
+         printPorts();
+         break;
+         
+      case 'K':
+      case 'k':  // Drill Backward
+         Serial.println("---Drill going backward---");
+         if (digitalRead(dForPin) == LOW && 
+             digitalRead(dBakPin) == LOW) {
+           digitalWrite(dBakPin, HIGH);
+         } else {     
+           digitalWrite(dForPin, LOW);
+           digitalWrite(dBakPin, LOW);
+         }
+         
+         printPorts();
+         break;
+         
+      case 'P':
+      case 'p': // Print Ports
+         Serial.println("---Printing all ports---");
+         printPorts();
+         break;
+      case 'M':
+      case 'm':
+         Serial.println("---Turn off all pins---");
+         for (int pin = 3; pin < 10; pin++){
+           digitalWrite(pin, LOW);
+         }
+         printPorts();
+         break;
+      case 'E':
+      case 'e':
+         Serial.end();
+         break;
+      default:
+         break;
+    }
+    
+    lastCommand = input;
+    
+    while(!Serial.available()){
+    }
+    input = Serial.read();
+  }
+  
+  for (int pin = 3; pin < 10; pin++){
+    digitalWrite(pin, LOW);
+  }
+  
+  switch(locat){
+    case 1:
+      moveCtrl(FORWARD);
+      break;
+    case 2:
+      break;
+    case 3:
+      if(digitalRead(trigFor)==LOW){
+        digitalWrite(dBakPin, LOW);
+        digitalWrite(dForPin, HIGH);
+      }
+      digitalWrite(Drill, HIGH);
+      break;
+    case 4:
+      if(digitalRead(trigBak)==LOW){
+        digitalWrite(dForPin, LOW);
+        digitalWrite(dBakPin, HIGH);
+      }
+      digitalWrite(Drill, HIGH);
+      break;
+    default:
+      break;
+  }
+  Serial.println("Resuming");
+  return;
+}
+
+void printPorts() {
+  Serial.print("Left Wheel: ");
+  Serial.println(digitalRead(motPin1));
+  
+  Serial.print("Right Wheel: ");
+  Serial.println(digitalRead(motPin2));
+  
+  Serial.print("Clamp 1: ");
+  Serial.println(digitalRead(rota1));
+  
+  Serial.print("Clamp 2: ");
+  Serial.println(digitalRead(rota2));
+    
+  Serial.print("Drill Forward: ");
+  Serial.println(digitalRead(dForPin));
+  
+  Serial.print("Drill Backward: ");
+  Serial.println(digitalRead(dBakPin));
+  Serial.println(" ");
+  Serial.println(" ");
   
 }
 
